@@ -115,8 +115,8 @@
           </p>
         </div>
 
-        <!-- Invitation Code Input (Optional when enabled) -->
-        <div v-if="invitationCodeEnabled">
+        <!-- Invitation Code Input (Optional when enabled, hidden if came from aff link) -->
+        <div v-if="invitationCodeEnabled && !formData.aff_code">
           <label for="invitation_code" class="input-label">
             {{ t('auth.invitationCodeLabel') }}
             <span class="ml-1 text-xs font-normal text-gray-400 dark:text-dark-500">({{ t('common.optional') }})</span>
@@ -163,11 +163,15 @@
           </transition>
         </div>
 
-        <!-- Aff Code (auto-filled from affiliate link, read-only) -->
+        <!-- Aff Code Banner (auto-filled from affiliate link, read-only) -->
         <div v-if="formData.aff_code">
-          <label class="input-label">
-            {{ t('auth.affCodeLabel') || 'Invite Code' }}
-          </label>
+          <!-- Referral notice banner -->
+          <div class="mb-3 flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2.5 dark:bg-blue-900/20">
+            <Icon name="gift" size="sm" class="text-blue-600 dark:text-blue-400 shrink-0" />
+            <span class="text-sm text-blue-700 dark:text-blue-400">
+              {{ t('auth.affCodeNotice', { code: formData.aff_code }) }}
+            </span>
+          </div>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-500" />
