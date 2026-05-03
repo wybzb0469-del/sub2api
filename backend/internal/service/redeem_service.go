@@ -79,6 +79,7 @@ type RedeemService struct {
 	cache                RedeemCache
 	billingCacheService  *BillingCacheService
 	entClient            *dbent.Client
+	affiliateService     *AffiliateService
 	authCacheInvalidator APIKeyAuthCacheInvalidator
 }
 
@@ -90,6 +91,7 @@ func NewRedeemService(
 	cache RedeemCache,
 	billingCacheService *BillingCacheService,
 	entClient *dbent.Client,
+	affiliateService *AffiliateService,
 	authCacheInvalidator APIKeyAuthCacheInvalidator,
 ) *RedeemService {
 	return &RedeemService{
@@ -99,6 +101,7 @@ func NewRedeemService(
 		cache:                cache,
 		billingCacheService:  billingCacheService,
 		entClient:            entClient,
+		affiliateService:     affiliateService,
 		authCacheInvalidator: authCacheInvalidator,
 	}
 }
@@ -322,6 +325,11 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 		}
 		if err := s.userRepo.UpdateBalance(txCtx, userID, amount); err != nil {
 			return nil, fmt.Errorf("update user balance: %w", err)
+		}
+		if s.affiliateService != nil && redeemCode.Value > 0 {
+			if _, err := s.affiliateService.AccrueInviteRebate(txCtx, userID, redeemCode.Value); err != nil {
+				return nil, fmt.Errorf("accrue invite rebate: %w", err)
+			}
 		}
 
 	case RedeemTypeConcurrency:

@@ -115,10 +115,11 @@
           </p>
         </div>
 
-        <!-- Invitation Code Input (Required when enabled) -->
+        <!-- Invitation Code Input (Optional when enabled) -->
         <div v-if="invitationCodeEnabled">
           <label for="invitation_code" class="input-label">
             {{ t('auth.invitationCodeLabel') }}
+            <span class="ml-1 text-xs font-normal text-gray-400 dark:text-dark-500">({{ t('common.optional') }})</span>
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -653,14 +654,6 @@ function validateForm(): boolean {
   } else if (formData.password.length < 6) {
     errors.password = t('auth.passwordMinLength')
     isValid = false
-  }
-
-  // Invitation code validation (required when enabled)
-  if (invitationCodeEnabled.value) {
-    if (!formData.invitation_code.trim()) {
-      errors.invitation_code = t('auth.invitationCodeRequired')
-      isValid = false
-    }
   }
 
   // Turnstile validation

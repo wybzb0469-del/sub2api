@@ -28,10 +28,14 @@ type httpUpstreamRecorder struct {
 
 	resp *http.Response
 	err  error
+	checkReq func(*http.Request)
 }
 
 func (u *httpUpstreamRecorder) Do(req *http.Request, proxyURL string, accountID int64, accountConcurrency int) (*http.Response, error) {
 	u.lastReq = req
+	if u.checkReq != nil {
+		u.checkReq(req)
+	}
 	if req != nil && req.Body != nil {
 		b, _ := io.ReadAll(req.Body)
 		u.lastBody = b

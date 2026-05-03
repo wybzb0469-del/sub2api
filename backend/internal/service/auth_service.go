@@ -147,21 +147,21 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 	// 检查是否需要邀请码
 	var invitationRedeemCode *RedeemCode
 	if s.settingService != nil && s.settingService.IsInvitationCodeEnabled(ctx) {
-		if invitationCode == "" {
-			return "", nil, ErrInvitationCodeRequired
+		invitationCode = strings.TrimSpace(invitationCode)
+		if invitationCode != "" {
+			// 验证邀请码
+			redeemCode, err := s.redeemRepo.GetByCode(ctx, invitationCode)
+			if err != nil {
+				logger.LegacyPrintf("service.auth", "[Auth] Invalid invitation code: %s, error: %v", invitationCode, err)
+				return "", nil, ErrInvitationCodeInvalid
+			}
+			// 检查类型和状态
+			if redeemCode.Type != RedeemTypeInvitation || redeemCode.Status != StatusUnused {
+				logger.LegacyPrintf("service.auth", "[Auth] Invitation code invalid: type=%s, status=%s", redeemCode.Type, redeemCode.Status)
+				return "", nil, ErrInvitationCodeInvalid
+			}
+			invitationRedeemCode = redeemCode
 		}
-		// 验证邀请码
-		redeemCode, err := s.redeemRepo.GetByCode(ctx, invitationCode)
-		if err != nil {
-			logger.LegacyPrintf("service.auth", "[Auth] Invalid invitation code: %s, error: %v", invitationCode, err)
-			return "", nil, ErrInvitationCodeInvalid
-		}
-		// 检查类型和状态
-		if redeemCode.Type != RedeemTypeInvitation || redeemCode.Status != StatusUnused {
-			logger.LegacyPrintf("service.auth", "[Auth] Invitation code invalid: type=%s, status=%s", redeemCode.Type, redeemCode.Status)
-			return "", nil, ErrInvitationCodeInvalid
-		}
-		invitationRedeemCode = redeemCode
 	}
 
 	// 检查是否需要邮件验证
@@ -594,17 +594,17 @@ func (s *AuthService) LoginOrRegisterOAuthWithTokenPair(ctx context.Context, ema
 			// 检查是否需要邀请码
 			var invitationRedeemCode *RedeemCode
 			if s.settingService != nil && s.settingService.IsInvitationCodeEnabled(ctx) {
-				if invitationCode == "" {
-					return nil, nil, ErrOAuthInvitationRequired
+				invitationCode = strings.TrimSpace(invitationCode)
+				if invitationCode != "" {
+					redeemCode, err := s.redeemRepo.GetByCode(ctx, invitationCode)
+					if err != nil {
+						return nil, nil, ErrInvitationCodeInvalid
+					}
+					if redeemCode.Type != RedeemTypeInvitation || redeemCode.Status != StatusUnused {
+						return nil, nil, ErrInvitationCodeInvalid
+					}
+					invitationRedeemCode = redeemCode
 				}
-				redeemCode, err := s.redeemRepo.GetByCode(ctx, invitationCode)
-				if err != nil {
-					return nil, nil, ErrInvitationCodeInvalid
-				}
-				if redeemCode.Type != RedeemTypeInvitation || redeemCode.Status != StatusUnused {
-					return nil, nil, ErrInvitationCodeInvalid
-				}
-				invitationRedeemCode = redeemCode
 			}
 
 			randomPassword, err := randomHexString(32)

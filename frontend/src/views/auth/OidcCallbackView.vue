@@ -93,7 +93,7 @@
             </div>
             <button
               class="btn btn-primary w-full"
-              :disabled="isSubmitting || !invitationCode.trim()"
+              :disabled="isSubmitting"
               @click="handleSubmitInvitation"
             >
               {{
@@ -652,7 +652,6 @@ async function finalizePendingAccountResponse(completion: PendingOidcCompletion)
 
 async function handleSubmitInvitation() {
   invitationError.value = ''
-  if (!invitationCode.value.trim()) return
 
   isSubmitting.value = true
   try {

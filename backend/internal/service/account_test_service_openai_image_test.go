@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/gin-gonic/gin"
@@ -63,6 +64,12 @@ func TestAccountTestService_OpenAIImageAPIKeyUsesConfiguredV1BaseURL(t *testing.
 				"Content-Type": []string{"application/json"},
 			},
 			Body: io.NopCloser(strings.NewReader(`{"data":[{"b64_json":"aGVsbG8=","revised_prompt":"draw a cat"}]}`)),
+		},
+		checkReq: func(req *http.Request) {
+			require.NotNil(t, req)
+			dl, ok := req.Context().Deadline()
+			require.True(t, ok)
+			require.Greater(t, time.Until(dl), 0*time.Second)
 		},
 	}
 	svc := &AccountTestService{

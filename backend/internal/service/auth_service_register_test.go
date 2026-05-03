@@ -179,6 +179,10 @@ func (s *emailCacheStub) IncrNotifyCodeUserRate(ctx context.Context, userID int6
 }
 
 func newAuthService(repo *userRepoStub, settings map[string]string, emailCache EmailCache) *AuthService {
+	return newAuthServiceWithRedeemRepo(repo, settings, emailCache, nil)
+}
+
+func newAuthServiceWithRedeemRepo(repo *userRepoStub, settings map[string]string, emailCache EmailCache, redeemRepo RedeemCodeRepository) *AuthService {
 	cfg := &config.Config{
 		JWT: config.JWTConfig{
 			Secret:     "test-secret",
@@ -203,7 +207,7 @@ func newAuthService(repo *userRepoStub, settings map[string]string, emailCache E
 	return NewAuthService(
 		nil, // entClient
 		repo,
-		nil, // redeemRepo
+		redeemRepo,
 		nil, // refreshTokenCache
 		cfg,
 		settingService,
@@ -214,6 +218,71 @@ func newAuthService(repo *userRepoStub, settings map[string]string, emailCache E
 		nil, // defaultSubAssigner
 		nil, // affiliateService
 	)
+}
+
+type authRegisterRedeemRepoStub struct {
+	code     *RedeemCode
+	getCalls []string
+	useCalls []struct {
+		id     int64
+		userID int64
+	}
+}
+
+func (s *authRegisterRedeemRepoStub) Create(ctx context.Context, code *RedeemCode) error {
+	panic("unexpected Create call")
+}
+
+func (s *authRegisterRedeemRepoStub) CreateBatch(ctx context.Context, codes []RedeemCode) error {
+	panic("unexpected CreateBatch call")
+}
+
+func (s *authRegisterRedeemRepoStub) GetByID(ctx context.Context, id int64) (*RedeemCode, error) {
+	panic("unexpected GetByID call")
+}
+
+func (s *authRegisterRedeemRepoStub) GetByCode(ctx context.Context, code string) (*RedeemCode, error) {
+	s.getCalls = append(s.getCalls, code)
+	if s.code == nil || s.code.Code != code {
+		return nil, ErrRedeemCodeNotFound
+	}
+	return s.code, nil
+}
+
+func (s *authRegisterRedeemRepoStub) Update(ctx context.Context, code *RedeemCode) error {
+	panic("unexpected Update call")
+}
+
+func (s *authRegisterRedeemRepoStub) Delete(ctx context.Context, id int64) error {
+	panic("unexpected Delete call")
+}
+
+func (s *authRegisterRedeemRepoStub) Use(ctx context.Context, id, userID int64) error {
+	s.useCalls = append(s.useCalls, struct {
+		id     int64
+		userID int64
+	}{id: id, userID: userID})
+	return nil
+}
+
+func (s *authRegisterRedeemRepoStub) List(ctx context.Context, params pagination.PaginationParams) ([]RedeemCode, *pagination.PaginationResult, error) {
+	panic("unexpected List call")
+}
+
+func (s *authRegisterRedeemRepoStub) ListWithFilters(ctx context.Context, params pagination.PaginationParams, codeType, status, search string) ([]RedeemCode, *pagination.PaginationResult, error) {
+	panic("unexpected ListWithFilters call")
+}
+
+func (s *authRegisterRedeemRepoStub) ListByUser(ctx context.Context, userID int64, limit int) ([]RedeemCode, error) {
+	panic("unexpected ListByUser call")
+}
+
+func (s *authRegisterRedeemRepoStub) ListByUserPaginated(ctx context.Context, userID int64, params pagination.PaginationParams, codeType string) ([]RedeemCode, *pagination.PaginationResult, error) {
+	panic("unexpected ListByUserPaginated call")
+}
+
+func (s *authRegisterRedeemRepoStub) SumPositiveBalanceByUser(ctx context.Context, userID int64) (float64, error) {
+	panic("unexpected SumPositiveBalanceByUser call")
 }
 
 func TestAuthService_Register_Disabled(t *testing.T) {
@@ -273,6 +342,42 @@ func TestAuthService_Register_EmailVerifyInvalid(t *testing.T) {
 	_, _, err := service.RegisterWithVerification(context.Background(), "user@test.com", "password", "wrong", "", "", "")
 	require.ErrorIs(t, err, ErrInvalidVerifyCode)
 	require.ErrorContains(t, err, "verify code")
+}
+
+func TestAuthService_Register_InvitationEnabledAllowsBlankInvitationCode(t *testing.T) {
+	repo := &userRepoStub{nextID: 42}
+	redeemRepo := &authRegisterRedeemRepoStub{}
+	service := newAuthServiceWithRedeemRepo(repo, map[string]string{
+		SettingKeyRegistrationEnabled: "true",
+		SettingKeyInvitationEnabled:   "true",
+	}, nil, redeemRepo)
+
+	token, user, err := service.RegisterWithVerification(context.Background(), "user@test.com", "password", "", "", "", "")
+	require.NoError(t, err)
+	require.NotEmpty(t, token)
+	require.NotNil(t, user)
+	require.Equal(t, int64(42), user.ID)
+	require.Empty(t, redeemRepo.getCalls)
+	require.Empty(t, redeemRepo.useCalls)
+}
+
+func TestAuthService_Register_InvitationEnabledUsesProvidedInvitationCode(t *testing.T) {
+	repo := &userRepoStub{nextID: 43}
+	redeemRepo := &authRegisterRedeemRepoStub{
+		code: &RedeemCode{ID: 7, Code: "INVITE", Type: RedeemTypeInvitation, Status: StatusUnused},
+	}
+	service := newAuthServiceWithRedeemRepo(repo, map[string]string{
+		SettingKeyRegistrationEnabled: "true",
+		SettingKeyInvitationEnabled:   "true",
+	}, nil, redeemRepo)
+
+	_, user, err := service.RegisterWithVerification(context.Background(), "user@test.com", "password", "", "", " INVITE ", "")
+	require.NoError(t, err)
+	require.Equal(t, int64(43), user.ID)
+	require.Equal(t, []string{"INVITE"}, redeemRepo.getCalls)
+	require.Len(t, redeemRepo.useCalls, 1)
+	require.Equal(t, int64(7), redeemRepo.useCalls[0].id)
+	require.Equal(t, int64(43), redeemRepo.useCalls[0].userID)
 }
 
 func TestAuthService_Register_EmailExists(t *testing.T) {

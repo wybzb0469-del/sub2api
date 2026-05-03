@@ -89,7 +89,7 @@
             </div>
             <button
               class="btn btn-primary w-full"
-              :disabled="isSubmitting || !invitationCode.trim()"
+              :disabled="isSubmitting"
               @click="handleSubmitInvitation"
             >
               {{ isSubmitting ? t('auth.linuxdo.completing') : t('auth.linuxdo.completeRegistration') }}
@@ -630,7 +630,6 @@ async function finalizePendingAccountResponse(completion: LinuxDoPendingActionRe
 
 async function handleSubmitInvitation() {
   invitationError.value = ''
-  if (!invitationCode.value.trim()) return
 
   isSubmitting.value = true
   try {
