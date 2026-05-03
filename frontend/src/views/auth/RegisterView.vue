@@ -163,6 +163,25 @@
           </transition>
         </div>
 
+        <!-- Aff Code (auto-filled from affiliate link, read-only) -->
+        <div v-if="formData.aff_code">
+          <label class="input-label">
+            {{ t('auth.affCodeLabel') || 'Invite Code' }}
+          </label>
+          <div class="relative">
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+              <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-500" />
+            </div>
+            <input
+              type="text"
+              :value="formData.aff_code"
+              disabled
+              readonly
+              class="input pl-11 pr-10 bg-gray-50 dark:bg-dark-800 cursor-not-allowed opacity-70"
+            />
+          </div>
+        </div>
+
         <!-- Promo Code Input (Optional) -->
         <div v-if="promoCodeEnabled">
           <label for="promo_code" class="input-label">
